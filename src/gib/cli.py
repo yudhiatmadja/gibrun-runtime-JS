@@ -263,6 +263,11 @@ def cmd_script_run(a):
     p = subprocess.run(sc, shell=True, env=env)
     return p.returncode
 
+def _perm_flags(s):
+    for f in ('--allow-read', '--allow-write', '--allow-net', '--allow-env', '--allow-run'):
+        s.add_argument(f, action='store_true')
+    return s
+
 def build_parser():
     p = argparse.ArgumentParser(prog='gib', description='Gibrun JS/TS runtime')
     p.add_argument('--version', action='store_true')
@@ -270,8 +275,8 @@ def build_parser():
     p.add_argument('--allow-net', action='store_true'); p.add_argument('--allow-env', action='store_true')
     p.add_argument('--allow-run', action='store_true')
     sub = p.add_subparsers(dest='cmd')
-    s = sub.add_parser('run'); s.add_argument('file'); s.set_defaults(fn=cmd_run)
-    s = sub.add_parser('eval'); s.add_argument('code'); s.set_defaults(fn=cmd_eval)
+    s = _perm_flags(sub.add_parser('run')); s.add_argument('file'); s.set_defaults(fn=cmd_run)
+    s = _perm_flags(sub.add_parser('eval')); s.add_argument('code'); s.set_defaults(fn=cmd_eval)
     s = sub.add_parser('init'); s.add_argument('--yes', '-y', action='store_true'); s.set_defaults(fn=cmd_init)
     s = sub.add_parser('add'); s.add_argument('packages', nargs='+'); s.set_defaults(fn=cmd_add)
     s = sub.add_parser('remove'); s.add_argument('packages', nargs='+'); s.set_defaults(fn=cmd_remove)
