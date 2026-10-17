@@ -196,9 +196,16 @@ def cmd_fmt(a):
 
 def cmd_check(a):
     # Real type check if tsc present, else scoped validation
-    if tsc_available():
-        tsc = shutil.which('tsc') or 'npx'
-        cmd = [tsc, '--noEmit'] if tsc.endswith('tsc') else ['npx', '--yes', 'typescript', '--noEmit']
+    local_tsc = Path.cwd() / 'node_modules' / '.bin' / ('tsc.cmd' if os.name == 'nt' else 'tsc')
+    if local_tsc.is_file():
+        cmd = [str(local_tsc), '--noEmit']
+    elif shutil.which('tsc'):
+        cmd = ['tsc', '--noEmit']
+    elif shutil.which('npx'):
+        cmd = ['npx', '--yes', '-p', 'typescript', 'tsc', '--noEmit']
+    else:
+        cmd = None
+    if cmd is not None:
         p = subprocess.run(cmd, capture_output=True, text=True)
         print(p.stdout + p.stderr)
         return p.returncode
