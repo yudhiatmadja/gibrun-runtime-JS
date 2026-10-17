@@ -10,7 +10,9 @@ class EngineError(Exception):
     def __init__(self, msg, code=1):
         super().__init__(msg); self.code = code
 
-def _run_node_import(entry: Path, cwd: Path, env_extra: dict, timeout=TIMEOUT) -> int:
+STRIP_TYPES = ['--experimental-strip-types']
+
+def _run_node_import(entry: Path, cwd: Path, env_extra: dict, timeout=TIMEOUT, extra_flags=None) -> int:
     env = dict(os.environ); env.update(env_extra)
     if env.get('GIBRUN_ALLOW_ENV') != '1':
         for k in list(env):
@@ -20,7 +22,7 @@ def _run_node_import(entry: Path, cwd: Path, env_extra: dict, timeout=TIMEOUT) -
                              'PATHEXT', 'WINDIR', 'COMSPEC'):
                     del env[k]
     try:
-        p = subprocess.run([NODE, '--import', PRELOAD.resolve().as_uri(), str(entry)],
+        p = subprocess.run([NODE, *(extra_flags or []), '--import', PRELOAD.resolve().as_uri(), str(entry)],
                            cwd=str(cwd), env=env,
                            stdout=sys.stdout, stderr=sys.stderr, timeout=timeout)
         return p.returncode
@@ -80,15 +82,20 @@ def run_file(path: str, timeout=TIMEOUT, env_extra=None) -> int:
     if p.suffix == '.tsx':
         print('error: .tsx requires JSX pipeline (not yet implemented)', file=sys.stderr); return 1
     is_ts = p.suffix in ('.ts', '.mts', '.cts')
-    src = p.read_text(encoding='utf-8')
     if is_ts:
-        import uuid
-        staged = p.parent / f'.gib-run-{p.stem}-{uuid.uuid4().hex[:8]}.mjs'
-        try:
-            staged.write_text(strip_types(src), encoding='utf-8')
-            return _run_node_import(staged, p.parent.resolve(), env_extra or {}, timeout)
-        finally:
-            staged.unlink(missing_ok=True)
+        # Prefer Node's native type stripping (handles relative .ts imports, enums, etc.).
+        rc = _run_node_import(p.resolve(), p.parent.resolve(), env_extra or {}, timeout, STRIP_TYPES)
+        if rc != 0:
+            # Fallback: regex strip to a sibling staged file (limited; documented).
+            import uuid
+            src = p.read_text(encoding='utf-8')
+            staged = p.parent / f'.gib-run-{p.stem}-{uuid.uuid4().hex[:8]}.mjs'
+            try:
+                staged.write_text(strip_types(src), encoding='utf-8')
+                return _run_node_import(staged, p.parent.resolve(), env_extra or {}, timeout)
+            finally:
+                staged.unlink(missing_ok=True)
+        return rc
     return _run_node_import(p.resolve(), p.parent.resolve(), env_extra or {}, timeout)
 
 def run_code(code: str, timeout=TIMEOUT, env_extra=None) -> int:

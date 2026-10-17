@@ -13,17 +13,11 @@ def cmd_info(a):
                       'python': sys.version.split()[0], 'platform': platform.platform()}, indent=2)); return 0
 def cmd_run(a):
     ok, env = permissions.check_perms(a, a.file)
-    suf = Path(a.file).suffix
-    if suf in ('.ts', '.mts', '.cts'):
-        # run via TS pipeline
-        from pathlib import Path as P
-        src = P(a.file).read_text(encoding='utf-8') if P(a.file).is_file() else ''
-        if not P(a.file).is_file():
-            print(f'error: file not found: {a.file}', file=sys.stderr); return 1
-        return engine.run_code_ts(src, env_extra=env) if src else 1
+    if not ok: return 1
     return engine.run_file(a.file, env_extra=env)
 def cmd_eval(a):
     ok, env = permissions.check_perms(a)
+    if not ok: return 1
     code = a.code
     if re.search(r':\s*(string|number|boolean|any)\b|interface\s+\w+|type\s+\w+', code):
         return engine.run_code_ts(code, env_extra=env)

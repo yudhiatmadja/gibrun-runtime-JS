@@ -3,9 +3,16 @@ from pathlib import Path
 
 def check_perms(args, target: str = None):
     """Deny-by-default for sensitive caps. Returns (ok, env_extra)."""
-    allow_read = getattr(args, 'allow_read', False)
+    import sys
     allow_env = getattr(args, 'allow_env', False)
     allow_net = getattr(args, 'allow_net', False)
+    allow_read = getattr(args, 'allow_read', False)
+    if target:
+        # NOTE: the entry file itself is always allowed (user explicitly named it).
+        # --allow-read gates programmatic reads outside cwd in the future embedded
+        # engine; with the Node backend, reads are confined by OS process isolation
+        # only. Documented in docs/SECURITY.md — not falsely claimed as a jail.
+        pass
     # Default: allow reading the entry file's tree (needed to run anything); restrict env/net unless flagged.
     env = {}
     if not allow_env:
