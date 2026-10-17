@@ -35,3 +35,13 @@ def test_ts_relative_import(tmp_path):
     (tmp_path / 'main.ts').write_text("import { n } from './util.ts';\nconsole.log('ts-rel:' + n);")
     r = gib('run', str(tmp_path / 'main.ts'))
     assert r.returncode == 0 and 'ts-rel:42' in r.stdout, r.stderr
+
+def test_start_fallback_to_dev(tmp_path):
+    (tmp_path / 'package.json').write_text('{"name":"x","scripts":{"dev":"node -e console.log(1)"}}')
+    r = gib('start', cwd=tmp_path)
+    assert r.returncode == 0 and 'starting "dev"' in r.stdout, r.stdout + r.stderr
+
+def test_start_missing_scripts(tmp_path):
+    (tmp_path / 'package.json').write_text('{"name":"x"}')
+    r = gib('start', cwd=tmp_path)
+    assert r.returncode != 0

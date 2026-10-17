@@ -264,6 +264,16 @@ def cmd_script_run(a):
     p = subprocess.run(sc, shell=True, env=env)
     return p.returncode
 
+def cmd_start(a):
+    pkg = _read_pkg()
+    scripts = pkg.get('scripts', {})
+    name = 'start' if 'start' in scripts else ('dev' if 'dev' in scripts else None)
+    if not name:
+        print('error: no "start" or "dev" script in package.json', file=sys.stderr); return 1
+    print(f'starting "{name}" script: {scripts[name]}')
+    a.script = name
+    return cmd_script_run(a)
+
 def _perm_flags(s):
     for f in ('--allow-read', '--allow-write', '--allow-net', '--allow-env', '--allow-run'):
         s.add_argument(f, action='store_true')
@@ -290,6 +300,7 @@ def build_parser():
     s = sub.add_parser('info'); s.set_defaults(fn=cmd_info)
     s = sub.add_parser('runx'); s.add_argument('package'); s.add_argument('--version', dest='version', default=None); s.add_argument('args', nargs='*'); s.set_defaults(fn=cmd_runx)
     s = sub.add_parser('script'); s.add_argument('script'); s.set_defaults(fn=cmd_script_run)
+    s = sub.add_parser('start', help='run "start" script (fallback: "dev")'); s.set_defaults(fn=cmd_start)
     return p
 
 def main(argv=None):
